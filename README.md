@@ -8,12 +8,12 @@ Overview
 - Optional `auto_resize` to grow buffer on writes.
 
 Repository layout
-- `bufferx.h` — public header declaring `plib::bufferx`.
-- `bufferx.cpp` — implementation.
+- `bufferx.h` â€” public header declaring `plib::bufferx`.
+- `bufferx.cpp` â€” implementation.
 - `buffer.vcxproj` / Visual Studio project files.
 
 Requirements
-- C++17 or newer. Note: `<format>` usage may require C++20 on some compilers — set the appropriate language standard in your build settings.
+- C++17 or newer. Note: `<format>` usage may require C++20 on some compilers â€” set the appropriate language standard in your build settings.
 - Visual Studio (project provided).
 
 Build
@@ -39,40 +39,3 @@ Behavior notes for floating-point accessors
 Usage example
 - Minimal example showing write/read of `float`, `double` and a length-prefixed `string`. Always ensure reads are safe by using `is_enough()`.
 
-```cpp
-#include "bufferx.h"
-#include <iostream>
-#include <string>
-
-int main() {
-	// Create a buffer with auto-resize enabled
-	plib::bufferx buf(128, true);
-	// Write a float
-	float f = 3.14f;
-	buf.set_float(f);
-	// Write a double
-	double d = 2.718281828459045;
-	buf.set_double(d);
-	// Write a length-prefixed string
-	std::string str = "Hello, bufferx!";
-	buf.set_string(str);
-	// Reset cursor for reading
-	buf.set_cursor(0);
-	// Read the float
-	if (buf.is_enough(sizeof(float))) {
-		float read_f = buf.get_float();
-		std::cout << "Read float: " << read_f << std::endl;
-	}
-	// Read the double
-	if (buf.is_enough(sizeof(double))) {
-		double read_d = buf.get_double();
-		std::cout << "Read double: " << read_d << std::endl;
-	}
-	// Read the length-prefixed string
-	if (buf.is_enough(2)) { // Check for length prefix
-		std::string read_str = buf.get_string();
-		std::cout << "Read string: " << read_str << std::endl;
-	}
-	return 0;
-}
-```
