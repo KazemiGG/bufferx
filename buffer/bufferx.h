@@ -1,5 +1,8 @@
 #ifndef __BUFFERX_H__
 #define __BUFFERX_H__
+#ifndef _STD 
+#define _STD ::std::
+#endif
 #include "pch.h"
 #include <string>
 #include <stdint.h>
@@ -19,22 +22,31 @@
 #include <format>
 namespace plib // project library
 {
+	enum : uint8_t {
+		manual_cleanup = 0,
+		auto_cleanup = 1,
+		auto_resize = 2,
+		manual_resize = 3
+	};
+
 	class bufferx {
-	public:
+	private:
 		bool auto_resize = false;
 		// if true, automatically resize on writes that exceed current size
+		bool auto_cleanup = false;
+		// if true, automatically free memory on destruction; if false, does not free (use with external buffers)
 	private:
 		/**
 		 * Pointer to the underlying byte buffer.
 		 * - Owned by this instance when allocated by the class.
 		 * - May point to an external block when constructed with a raw pointer.
 		 */
-		uint8_t* data;
+		uint8_t* data = nullptr;
 	private:
 		/**
 		 * Total allocated capacity (bytes) of `data`.
 		 */
-		uintmax_t size; 
+		uintmax_t size;
 		/**
 		 * Current read/write cursor (byte offset) within `data`.
 		 */
@@ -88,7 +100,7 @@ namespace plib // project library
 		 * @return Pointer to the buffer bytes (may be nullptr).
 		 */
 		uint8_t* get_data() const { return data; }
-	public: 
+	public:
 		/**
 		 * Write a UTF-8 (or raw) string to the buffer prefixed by a 16-bit length.
 		 * Advances the internal cursor and records a STRING detector.
@@ -103,7 +115,7 @@ namespace plib // project library
 		 * @throws std::exception if there is insufficient space.
 		 */
 		void set_string(const char* value);
-	public: 
+	public:
 		/**
 		 * Append an unsigned byte to the buffer and record UBYTE detector.
 		 * @param value Value to append.
@@ -128,7 +140,7 @@ namespace plib // project library
 		 * @throws std::exception if there is insufficient space.
 		 */
 		void set_ulong(const uint64_t& value);
-	public: 
+	public:
 		/**
 		 * Append a signed byte and record BYTE detector.
 		 * @param value Value to append.
@@ -171,7 +183,7 @@ namespace plib // project library
 		 * @throws std::exception if there is insufficient space (unless auto_resize is enabled and successful).
 		 */
 		void set_double(const double& value);
-	public: 
+	public:
 		/**
 		 * Read an unsigned byte from the current cursor and advance the cursor.
 		 * @return Read value.
@@ -193,7 +205,7 @@ namespace plib // project library
 		 * @return Read value.
 		 */
 		const uint64_t get_ulong();
-	public: 
+	public:
 		/**
 		 * Read a signed byte from the current cursor and advance the cursor.
 		 * @return Read value.
@@ -267,6 +279,35 @@ namespace plib // project library
 		 * @return `true` when the requested number of bytes is available; `false` otherwise.
 		 */
 		bool is_enough(const uintmax_t& size);
+		/**
+		 * Write the entire buffer contents to a file at the specified path.
+		 * - Creates the file if it does not exist; overwrites it if it does.
+		 * - Writes all bytes from the start of `data` up to `size`.
+		 * - Does not modify object state.
+		 * @param path Filesystem path where the buffer should be written.
+		 * @throws std::exception if the file cannot be opened or a write error occurs.
+		 */
+		void to_file(const _STD string& path) const;
+		/**
+		 * Create a new bufferx instance by reading an entire file into memory.
+		 * - Allocates a new bufferx and loads the file contents into it.
+		 * - The caller is responsible for managing (and eventually deleting) the returned pointer.
+		 * - Does not modify the current object state.
+		 * @param path Filesystem path to read.
+		 * @return Pointer to a newly allocated bufferx containing the file contents.
+		 * @throws std::exception if the file does not exist, cannot be opened, or memory allocation fails.
+		 */
+		bufferx* from_file(const _STD string& path) const;
+		/**
+382: 		 * Configure resource management flags.
+383: 		 * @param auto_resize If non-zero the instance will attempt to auto-resize on writes that exceed capacity.
+384: 		 * @param auto_cleanup If non-zero the instance will free owned/external `data` on destruction.
+385: 		 *
+386: 		 * Use:
+387: 		 * - `set_resources(plib::auto_resize, plib::auto_cleanup)` to enable both behaviors.
+388: 		 * - Passing zero for a flag disables the corresponding behavior.
+389: 		 */
+		void set_resources(const uint8_t& auto_resize, const uint8_t& auto_cleanup);
 	};
 }
 #endif __BUFFERX_H__

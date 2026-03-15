@@ -46,10 +46,12 @@ namespace plib // project library
 	}
 	bufferx::~bufferx()
 	{
-		if (data) {
-			delete[] data;
-			data = nullptr;
-		} this->size = 0x0, this->pos = 0x0;
+		if (auto_cleanup == true) {
+			if (data) {
+				delete[] data;
+				data = nullptr;
+			} this->size = 0x0, this->pos = 0x0;
+		}
 	}
 	const uintmax_t bufferx::get_size() const
 	{
@@ -64,7 +66,9 @@ namespace plib // project library
 	{
 		size_t estimate = sizeof(uint16_t) + value.length();
 		if (this->pos + estimate > this->size)
-			throw _STD exception("bufferx: insufficient buffer size for string");
+			if (auto_resize)
+				this->resize(this->size + estimate);
+			else throw _STD exception("bufferx: insufficient buffer size for string");
 		uint16_t str_len = (uint16_t)value.length();
 		_STD memcpy(this->data + this->pos, &str_len, sizeof(uint16_t));
 		this->pos += sizeof(uint16_t);
@@ -281,6 +285,46 @@ namespace plib // project library
 		if (this->pos + size > this->size)
 			return false;
 		return true;
+	}
+
+	void bufferx::to_file(const::std::string& path) const
+	{
+		FILE* fp = _STD fopen(path.c_str(), "wb");
+		if (!fp)
+			throw _STD exception("bufferx: failed to open file for writing");
+		size_t written = _STD fwrite(this->data, 1, this->size, fp);
+		if (written != this->size) {
+			_STD fclose(fp);
+			throw _STD exception("bufferx: failed to write all data to file");
+		}
+		_STD fflush(fp);
+		_STD fclose(fp);
+	}
+
+	bufferx* bufferx::from_file(const::std::string& path) const
+	{
+		std::ifstream ifs(path, std::ios::binary);
+		if (!ifs.is_open())
+			throw _STD exception("bufferx: failed to open file for reading");
+		ifs.seekg(0, std::ios::end);
+		uintmax_t file_size = (uintmax_t)ifs.tellg();
+		ifs.seekg(0, std::ios::beg);
+		uint8_t* file_data = new (_STD nothrow) uint8_t[file_size];
+		if (!file_data) {
+			ifs.close();
+			throw _STD exception("bufferx: memory allocation failure during file read");
+		} else {
+			ifs.read(reinterpret_cast<char*>(file_data), file_size);
+			ifs.close();
+			return new bufferx(file_data, file_size);
+		}
+		return nullptr;
+	}
+
+	void bufferx::set_resources(const uint8_t& auto_resize, const uint8_t& auto_cleanup)
+	{
+		this->auto_resize = (auto_resize == plib::auto_resize ? true : false);
+		this->auto_cleanup = (auto_cleanup == plib::auto_cleanup ? true : false);
 	}
 
 }
